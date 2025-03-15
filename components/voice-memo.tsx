@@ -4,7 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Play, ClipboardCopy } from "lucide-react"
 import { useRouter } from "next/navigation"
-
+import { useRef } from "react"
+import { useEffect } from "react"
 interface VoiceMemoProps {
   audioUrl: string
   title: string
@@ -18,10 +19,35 @@ export function VoiceMemo({ audioUrl, title, transcript, timestamp, conversation
   const router = useRouter()
   const [showCopyButton, setShowCopyButton] = useState(false)
 
+  const [isPlaying, setIsPlaying] = useState(false)
+
+  const audioRef = useRef<HTMLAudioElement>(null)
+
   const handlePlayback = () => {
-    // Navigate to the playback screen with the specific memo ID
-    router.push(`/playback/${conversationId}?memo=${memoId}`)
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause()
+        setIsPlaying(false)
+      } else {
+        audioRef.current.play()
+        setIsPlaying(true)
+      }
+    }
   }
+
+  // Handle audio ended event
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const handleEnded = () => setIsPlaying(false)
+    audio.addEventListener('ended', handleEnded)
+
+    return () => {
+      audio.removeEventListener('ended', handleEnded)
+    }
+  }, [])
 
   return (
     <div
@@ -29,8 +55,10 @@ export function VoiceMemo({ audioUrl, title, transcript, timestamp, conversation
       onMouseEnter={() => setShowCopyButton(true)}
       onMouseLeave={() => setShowCopyButton(false)}
     >
+      <audio ref={audioRef} src={audioUrl} preload="metadata" />
       <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={handlePlayback}>
-        <Play className="h-4 w-4" />
+        {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+
       </Button>
       <div className="flex-1 bg-white rounded-lg p-4 shadow-sm relative">
         <h3 className="font-bold mb-2">{title}</h3>

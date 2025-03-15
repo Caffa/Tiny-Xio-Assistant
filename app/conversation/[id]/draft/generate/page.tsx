@@ -5,12 +5,17 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Copy } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import React from "react"
 
 export default function GenerateDraftPage({
   params,
 }: {
   params: { id: string }
 }) {
+  // Unwrap params Promise
+  const unwrappedParams = React.use(params);
+  const conversationId = unwrappedParams.id;
+
   const searchParams = useSearchParams()
   const draftType = searchParams.get("type") || "twitter"
   const customPrompt = searchParams.get("prompt")
@@ -55,7 +60,7 @@ export default function GenerateDraftPage({
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="flex items-center justify-between p-4 bg-white border-b">
-        <Link href={`/conversation/${params.id}/draft`}>
+        <Link href={`/conversation/${conversationId}/draft`}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-6 w-6" />
           </Button>

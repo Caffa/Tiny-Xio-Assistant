@@ -42,6 +42,10 @@ export default function CreateDraftPage({
 }: {
   params: { id: string }
 }) {
+  // Unwrap params Promise
+  const unwrappedParams = React.use(params);
+  const conversationId = unwrappedParams.id;
+
   const router = useRouter()
   const [showPromptEdit, setShowPromptEdit] = useState(false)
   const [selectedOption, setSelectedOption] = useState<(typeof draftOptions)[0] | null>(null)
@@ -49,7 +53,7 @@ export default function CreateDraftPage({
 
   const handleOptionClick = (option: (typeof draftOptions)[0]) => {
     // Direct navigation to AI draft generation
-    router.push(`/conversation/${params.id}/draft/generate?type=${option.id}`)
+    router.push(`/conversation/${conversationId}/draft/generate?type=${option.id}`)
   }
 
   const handleSettingsClick = (e: React.MouseEvent, option: (typeof draftOptions)[0]) => {
@@ -62,7 +66,7 @@ export default function CreateDraftPage({
   const handleGenerateDraft = () => {
     if (selectedOption) {
       router.push(
-        `/conversation/${params.id}/draft/generate?type=${selectedOption.id}&prompt=${encodeURIComponent(customPrompt)}`,
+        `/conversation/${conversationId}/draft/generate?type=${selectedOption.id}&prompt=${encodeURIComponent(customPrompt)}`,
       )
     }
   }
@@ -70,7 +74,7 @@ export default function CreateDraftPage({
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="flex items-center justify-between p-4 bg-white border-b">
-        <Link href={`/conversation/${params.id}`}>
+        <Link href={`/conversation/${conversationId}`}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-6 w-6" />
           </Button>

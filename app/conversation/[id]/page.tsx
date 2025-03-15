@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Mic, ClipboardCopy, FileEdit } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import React from "react"
+import { getConversation, Conversation } from "@/lib/storage"
 
 // Mock data for conversations
 const mockConversations: Record<
@@ -72,49 +74,50 @@ export default function ConversationPage({
 }: {
   params: { id: string }
 }) {
+  // Unwrap params Promise
+  const unwrappedParams = React.use(params);
+  const conversationId = unwrappedParams.id;
+
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [conversation, setConversation] = useState<{
-    title: string
-    memos: Array<{
-      id: string
-      title: string
-      transcript: string
-      timestamp: string
-    }>
-  } | null>(null)
+  const [conversation, setConversation] = useState<Conversation | null>(null)
 
   // Get the title from URL params or use the ID
   const titleFromParams = searchParams.get("title")
 
   useEffect(() => {
-    // Check if this is an existing conversation or a new one
-    if (mockConversations[params.id]) {
-      setConversation(mockConversations[params.id])
-    } else if (params.id.startsWith("new-")) {
+    // Get conversation from storage utility
+    const storedConversation = getConversation(conversationId);
+
+    if (storedConversation) {
+      setConversation(storedConversation)
+    } else if (conversationId.startsWith("new-")) {
       // This is a new conversation
-      setConversation({
+      const newConversation: Conversation = {
+        id: conversationId,
         title: titleFromParams || "New Recording",
-        memos: [],
-      })
+        timestamp: new Date().toISOString(),
+        recordings: []
+      }
+      setConversation(newConversation)
     }
-  }, [params.id, titleFromParams])
+  }, [conversationId, titleFromParams])
 
   const handleAddToConversation = () => {
-    router.push(`/record?conversation=${params.id}&title=${encodeURIComponent(conversation?.title || "Recording")}`)
+    router.push(`/record?conversation=${conversationId}&title=${encodeURIComponent(conversation?.title || "Recording")}`)
   }
 
   const handleCreateDraft = () => {
-    router.push(`/conversation/${params.id}/draft`)
+    router.push(`/conversation/${conversationId}/draft`)
   }
 
   if (!conversation) {
     return <div>Loading...</div>
   }
 
-  // Group memos by date
-  const groupedMemos = conversation.memos.reduce((groups: Record<string, typeof conversation.memos>, memo) => {
-    const date = new Date(memo.timestamp).toLocaleDateString("en-US", {
+  // Group recordings by date
+  const groupedRecordings = conversation.recordings.reduce((groups: Record<string, typeof conversation.recordings>, recording) => {
+    const date = new Date(recording.timestamp).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -124,7 +127,7 @@ export default function ConversationPage({
       groups[date] = []
     }
 
-    groups[date].push(memo)
+    groups[date].push(recording)
     return groups
   }, {})
 
@@ -150,23 +153,23 @@ export default function ConversationPage({
       </header>
 
       <main className="p-4 pb-24">
-        {conversation.memos.length > 0 ? (
-          Object.entries(groupedMemos).map(([date, memos]) => (
+        {conversation.recordings.length > 0 ? (
+          Object.entries(groupedRecordings).map(([date, recordings]) => (
             <div key={date} className="mb-8">
               <div className="flex justify-center mb-4">
                 <span className="bg-gray-200 text-gray-600 px-4 py-1 rounded-full text-sm">{date}</span>
               </div>
 
               <div className="space-y-4">
-                {memos.map((memo) => (
+                {recordings.map((recording) => (
                   <VoiceMemo
-                    key={memo.id}
-                    audioUrl="/demo.mp3"
-                    title={memo.title}
-                    transcript={memo.transcript}
-                    timestamp={memo.timestamp}
-                    conversationId={params.id}
-                    memoId={memo.id}
+                    key={recording.id}
+                    audioUrl={recording.audioUrl}
+                    title={recording.title}
+                    transcript={recording.transcript}
+                    timestamp={recording.timestamp}
+                    conversationId={conversationId}
+                    memoId={recording.id}
                   />
                 ))}
               </div>

@@ -5,8 +5,8 @@
 * **Screens:** Start Screen (with only the Record Button), Recording Screen (basic recording controls).
 * **Functionality:**
     * Record voice input for a set duration.
-    * Save the voice memo (audio file).
-    * Basic playback of saved voice memos within the Recording Screen (replace stop button with play after recording).
+    * Save the voice memo (audio file). Once the save button is pressed in the Recording Screen, move to the Conversation Screen.
+    * Basic play of saved voice memos within the Conversation Screen.
     * A simple list of past recordings on the Start Screen (without conversation grouping).
 
 **Phase 2: Basic Transcription & Playback Screen**
@@ -19,20 +19,20 @@
 
 **Phase 3: Conversation Management**
 
-* **Screens:** Update the Start Screen to allow selection of "past conversations". Introduce the basic structure for the Conversation Window.
+* **Screens:** Update the Start Screen to allow selection of "past conversations". Introduce the basic structure for the Conversation Screen.
 * **Functionality:**
     * Implement the concept of "conversations" as containers for multiple recordings/messages.
     * Allow users to start a new conversation (from the Record Button).
-    * Allow users to add new recordings to existing conversations (from the Conversation Window).
-    * Basic display of messages within the Conversation Window (just the raw transcript for now).
+    * Allow users to add new recordings to existing conversations (from the Conversation Screen).
+    * Basic display of messages within the Conversation Screen (just the raw transcript for now).
 
 **Phase 4: AI Enhancement & Summarization**
 
 * **Functionality:**
     * Integrate LM Studio for AI-powered transcription enhancement.
     * Save the enhanced transcription.
-    * Display the enhanced transcription in the Conversation Window and Playback Screen.
-    * Implement AI title generation for each message (displayed in the Conversation Window).
+    * Display the enhanced transcription in the Conversation Screen and Playback Screen.
+    * Implement AI title generation for each message (displayed in the Conversation Screen).
 
 **Phase 5: UI/UX Refinements & Recording Screen Polish**
 
@@ -43,11 +43,11 @@
     * Change the stop button to a checkmark.
     * Implement the placeholder title logic.
 
-**Phase 6: Conversation Window & Playback Screen Enhancements**
+**Phase 6: Conversation Screen & Playback Screen Enhancements**
 
-* **Screens:** Fully implement the Conversation Window (message bubbles, time bubbles, copy button, write draft button) and the Playback Screen (updated layout, chapter list button, copy button).
+* **Screens:** Fully implement the Conversation Screen (message bubbles, time bubbles, copy button, write draft button) and the Playback Screen (updated layout, chapter list button, copy button).
 * **Functionality:**
-    * Display messages in bubbles with bold titles in the Conversation Window.
+    * Display messages in bubbles with bold titles in the Conversation Screen.
     * Add time bubbles for date separation.
     * Implement the "Copy to Clipboard" button in both screens.
     * Implement the basic "Write Draft" button (which will lead to the next phase).
@@ -69,7 +69,7 @@
 **Phase 8: Follow-up Questions & Final Polish**
 
 * **Functionality:**
-    * Implement AI-powered follow-up question generation based on the conversation context (display in the Conversation Window).
+    * Implement AI-powered follow-up question generation based on the conversation context (display in the Conversation Screen).
     * Implement navigation from the Chapter List Panel to specific messages in the Playback Screen.
     * Thorough testing and bug fixing.
     * UI/UX refinements and performance optimizations.

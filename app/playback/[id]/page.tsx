@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { X, Play, Pause, List, ClipboardCopy } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
+import React from "react"
 
 // Mock data structure for conversations
 const mockConversations: Record<
@@ -55,6 +56,10 @@ export default function PlaybackPage({
 }: {
   params: { id: string }
 }) {
+  // Unwrap params Promise
+  const unwrappedParams = React.use(params);
+  const conversationId = unwrappedParams.id;
+
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
   const [showChapters, setShowChapters] = useState(false)
@@ -129,7 +134,7 @@ export default function PlaybackPage({
   }
 
   const handleClose = () => {
-    router.push(`/conversation/${params.id}`)
+    router.push(`/conversation/${conversationId}`)
   }
 
   if (!conversation) {

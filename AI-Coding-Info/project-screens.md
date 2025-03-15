@@ -59,7 +59,7 @@ Here's a breakdown of the screens and panels for the smart AI note-taking app.
 * **Speech Indicator:**
     * **Functionality:** Visually represents the incoming audio volume. The visual elements (e.g., bars, waves) will increase in size or intensity as the volume increases and decrease as the volume decreases.
 
-### 3. Conversation Window
+### 3. Conversation Screen
 
 * **Layout:**
     * Top section: Likely a title bar displaying the conversation title.
