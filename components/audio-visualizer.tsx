@@ -13,6 +13,20 @@ export function AudioVisualizer({ audioStream, isRecording }: AudioVisualizerPro
   const [audioLevels, setAudioLevels] = useState<number[]>(Array(50).fill(0))
   const prevLevelsRef = useRef<number[]>(Array(50).fill(0))
 
+  // Create a persistent array of random frequency band assignments for bars
+  const freqBandAssignmentsRef = useRef<number[]>(() => {
+    return Array(50).fill(0).map(() => {
+      // Randomly assign each bar to focus on different frequency ranges
+      // 0: default (full range), 1: low, 2: mid, 3: high
+      const weights = [0.7, 0.1, 0.1, 0.1] // 70% default, 10% each special range
+      const rand = Math.random()
+      if (rand < weights[0]) return 0
+      if (rand < weights[0] + weights[1]) return 1
+      if (rand < weights[0] + weights[1] + weights[2]) return 2
+      return 3
+    })
+  })
+
   useEffect(() => {
     if (!audioStream || !canvasRef.current) return
 
@@ -25,7 +39,7 @@ export function AudioVisualizer({ audioStream, isRecording }: AudioVisualizerPro
     gainNode.gain.value = 1.5
 
     // Increase FFT size for better frequency resolution
-    analyser.fftSize = 1024
+    analyser.fftSize = 2048 // Increased for better frequency resolution
 
     // Slightly higher smoothing for smoother decay
     analyser.smoothingTimeConstant = 0.6
@@ -37,6 +51,15 @@ export function AudioVisualizer({ audioStream, isRecording }: AudioVisualizerPro
     const bufferLength = analyser.frequencyBinCount
     const timeData = new Float32Array(bufferLength)
     const freqData = new Uint8Array(bufferLength)
+
+    const getFrequencyRangeValue = (start: number, end: number): number => {
+      let sum = 0
+      const length = end - start
+      for (let i = start; i < end; i++) {
+        sum += freqData[i]
+      }
+      return sum / length / 255 // Normalize to 0-1
+    }
 
     const updateAudioLevels = () => {
       if (!isRecording) {
@@ -55,24 +78,14 @@ export function AudioVisualizer({ audioStream, isRecording }: AudioVisualizerPro
       }
       rms = Math.sqrt(rms / timeData.length)
 
-      // Focus on vocal frequencies for the frequency analysis
-      const startBin = Math.floor(bufferLength * 0.05)
-      const endBin = Math.floor(bufferLength * 0.3)
-      let freqSum = 0
-      for (let i = startBin; i < endBin; i++) {
-        freqSum += freqData[i]
-      }
-      const freqAvg = freqSum / (endBin - startBin) / 255 // Normalize to 0-1
+      // Get different frequency range values
+      const lowFreq = getFrequencyRangeValue(0, Math.floor(bufferLength * 0.1))    // 0-200Hz
+      const midFreq = getFrequencyRangeValue(Math.floor(bufferLength * 0.1), Math.floor(bufferLength * 0.3))  // 200-800Hz
+      const highFreq = getFrequencyRangeValue(Math.floor(bufferLength * 0.3), Math.floor(bufferLength * 0.5)) // 800-2000Hz
 
       // Combine RMS and frequency data for final value
-      const combinedValue = (rms * 0.7 + freqAvg * 0.3)
-
       // Apply non-linear scaling for better visual dynamics
-      // Lower the scaling factor to prevent maxing out
-      const scaledValue = Math.pow(combinedValue, 0.6) * 2.5
-
-      // Clamp between 0 and 1
-      const normalizedValue = Math.min(1, Math.max(0, scaledValue))
+      const baseValue = Math.pow(rms * 0.7, 0.6) * 2.5
 
       // Create a bell curve distribution for the bars
       const centerIndex = Math.floor(audioLevels.length / 2)
@@ -82,13 +95,40 @@ export function AudioVisualizer({ audioStream, isRecording }: AudioVisualizerPro
         // Create bell curve falloff
         const amplitudeFactor = Math.exp(-Math.pow(distanceFromCenter * 2, 2))
 
+        // Get frequency band assignment for this bar
+        const freqBand = freqBandAssignmentsRef.current[index]
+
+        // Calculate base target value
+        let targetValue = baseValue
+
+        // Modify target value based on frequency band assignment
+        switch (freqBand) {
+          case 1: // Low frequency focused
+            targetValue = targetValue * 0.7 + lowFreq * 0.8
+            break
+          case 2: // Mid frequency focused
+            targetValue = targetValue * 0.7 + midFreq * 0.8
+            break
+          case 3: // High frequency focused
+            targetValue = targetValue * 0.7 + highFreq * 0.8
+            break
+          default: // Default behavior (full range)
+            // Keep original target value
+            break
+        }
+
+        // Clamp between 0 and 1
+        targetValue = Math.min(1, Math.max(0, targetValue))
+
+        // Apply bell curve distribution
+        targetValue = targetValue * 100 * amplitudeFactor
+
         // Get the previous value for this position for smooth decay
         const prevValue = prevLevelsRef.current[index]
-        const targetValue = normalizedValue * 100 * amplitudeFactor
 
         // Smooth decay: if new value is lower, decay gradually
         if (targetValue < prevValue) {
-          return prevValue * 0.85 // Decay factor (adjust for faster/slower decay)
+          return prevValue * 0.85 // Decay factor
         }
         return targetValue
       })
@@ -122,7 +162,13 @@ export function AudioVisualizer({ audioStream, isRecording }: AudioVisualizerPro
             <div
               className={cn(
                 "w-full rounded-sm transition-all duration-200",
-                isRecording ? "bg-gray-900" : "bg-gray-200"
+                isRecording ?
+                  // Different colors for different frequency bands
+                  freqBandAssignmentsRef.current[index] === 1 ? "bg-gray-800" :
+                  freqBandAssignmentsRef.current[index] === 2 ? "bg-gray-700" :
+                  freqBandAssignmentsRef.current[index] === 3 ? "bg-gray-600" :
+                  "bg-gray-900"
+                : "bg-gray-200"
               )}
               style={{
                 height: `${Math.max(2, height)}%`,

@@ -82,6 +82,16 @@ body {
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  /* Ensure headings have proper contrast */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-black;
+  }
+
+  /* Dark mode heading adjustments */
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-white;
+  }
 }
 
 @layer base {
@@ -92,3 +102,4 @@ body {
     @apply bg-background text-foreground;
   }
 }
+

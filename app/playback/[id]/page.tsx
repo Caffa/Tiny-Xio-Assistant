@@ -144,12 +144,22 @@ export default function PlaybackPage({
   return (
     <div className="min-h-screen bg-white">
       <header className="flex items-center justify-between p-4 border-b">
-        <Button variant="ghost" size="icon" onClick={handleClose}>
-          <X className="h-6 w-6" />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleClose}
+          className="border-2 border-black bg-white hover:bg-gray-100"
+        >
+          <X className="h-6 w-6 text-black" />
         </Button>
         <h1 className="text-lg font-medium tracking-wide uppercase">NOW PLAYING</h1>
-        <Button variant="ghost" size="icon" onClick={() => setShowChapters(true)}>
-          <List className="h-6 w-6" />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setShowChapters(true)}
+          className="border-2 border-black bg-white hover:bg-gray-100"
+        >
+          <List className="h-6 w-6 text-black" />
         </Button>
       </header>
 

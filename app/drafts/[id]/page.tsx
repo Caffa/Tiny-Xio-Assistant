@@ -61,8 +61,13 @@ export default function DraftsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="flex items-center justify-between p-4 bg-white border-b">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-6 w-6" />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => router.back()}
+          className="border-2 border-black bg-white hover:bg-gray-100"
+        >
+          <ArrowLeft className="h-6 w-6 text-black" />
         </Button>
         <h1 className="text-xl font-medium">Create Draft</h1>
         <div className="w-10" /> {/* Spacer for alignment */}

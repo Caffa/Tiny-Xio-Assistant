@@ -9,6 +9,8 @@
     * Basic play of saved voice memos within the Conversation Screen.
     * A simple list of past recordings on the Start Screen (without conversation grouping).
 
+Can you load the messages per conversation by using a folder structure to represent each conversation in the data/recordings folders. Use a date time stamp down to the second to represent each conversation's id which serves as the folder name. Do the same for the files (date-time stamp id is filename).
+
 **Phase 2: Basic Transcription & Playback Screen**
 
 * **Screens:** Introduce the Playback Screen (initially just showing the raw transcription and a basic play button).

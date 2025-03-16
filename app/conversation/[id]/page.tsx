@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Mic, ClipboardCopy, FileEdit } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import React from "react"
-import { getConversation, Conversation } from "@/lib/storage"
+import { getConversation, type Conversation } from "@/lib/storage"
 
 // Mock data for conversations
 const mockConversations: Record<
@@ -74,10 +73,7 @@ export default function ConversationPage({
 }: {
   params: { id: string }
 }) {
-  // Unwrap params Promise
-  const unwrappedParams = React.use(params);
-  const conversationId = unwrappedParams.id;
-
+  const conversationId = params.id
   const router = useRouter()
   const searchParams = useSearchParams()
   const [conversation, setConversation] = useState<Conversation | null>(null)
@@ -136,8 +132,12 @@ export default function ConversationPage({
       <header className="flex items-center justify-between p-4 bg-white">
         <div className="flex items-center gap-4">
           <Link href="/">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-6 w-6" />
+            <Button
+              variant="outline"
+              size="icon"
+              className="border-2 border-black bg-white hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-6 w-6 text-black" />
             </Button>
           </Link>
           <h1 className="text-xl font-medium">{conversation.title}</h1>
@@ -164,7 +164,7 @@ export default function ConversationPage({
                 {recordings.map((recording) => (
                   <VoiceMemo
                     key={recording.id}
-                    audioUrl={recording.audioUrl}
+                    filePath={recording.filePath}
                     title={recording.title}
                     transcript={recording.transcript}
                     timestamp={recording.timestamp}

@@ -1,24 +1,35 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { AudioVisualizer } from "@/components/audio-visualizer"
-import { Timer } from "@/components/timer"
-import { ArrowLeft, Play, Pause, Check, Sparkles } from "lucide-react"
+import React, { useEffect, useRef, useState } from "react"
+import { ChevronLeft, Pause, Play, Check } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { useSearchParams, useRouter } from "next/navigation"
+import { AudioVisualizer } from "@/components/audio-visualizer"
+import { Button } from "@/components/ui/button"
+import { createConversation, saveRecording } from "@/lib/storage"
 import { cn } from "@/lib/utils"
-import { saveRecording } from "@/lib/storage"
+
+// Get supported audio MIME type
+const getSupportedMimeType = () => {
+  const types = ['audio/mp3', 'audio/mpeg', 'audio/webm;codecs=opus', 'audio/ogg;codecs=opus']
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type
+    }
+  }
+  return 'audio/webm' // Fallback
+}
 
 export default function RecordPage() {
-  const [isRecording, setIsRecording] = useState(false) // Start with false instead of true
+  const [isRecording, setIsRecording] = useState(false)
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null)
-  const [isPulsing, setIsPulsing] = useState(false) // Start with false instead of true
+  const [isPulsing, setIsPulsing] = useState(false)
   const [permissionError, setPermissionError] = useState<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const searchParams = useSearchParams()
   const router = useRouter()
+  const mimeType = useRef(getSupportedMimeType())
 
   // Get the conversation ID and title from the URL
   const conversationId = searchParams.get("conversation")
@@ -29,65 +40,74 @@ export default function RecordPage() {
     const requestPermissionAndStartRecording = async () => {
       try {
         console.log("Requesting microphone permission...")
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        console.log("Permission granted, starting recording...")
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1, // Mono audio for voice
+            noiseSuppression: true, // Reduce background noise
+            echoCancellation: true, // Reduce echo
+            autoGainControl: true, // Auto adjust volume
+          },
+        })
         setAudioStream(stream)
-        setIsRecording(true)
-        setIsPulsing(true)
-        setPermissionError(null)
+        console.log("Microphone access granted")
 
-        const mediaRecorder = new MediaRecorder(stream)
-        mediaRecorderRef.current = mediaRecorder
+        // Create new MediaRecorder with the stream
+        const recorder = new MediaRecorder(stream, { mimeType: mimeType.current })
+        mediaRecorderRef.current = recorder
         audioChunksRef.current = []
 
-        mediaRecorder.addEventListener("dataavailable", (event) => {
+        // Handle data coming from the recorder
+        recorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
-            console.log("Audio chunk received:", event.data.size, "bytes")
             audioChunksRef.current.push(event.data)
+            console.log("Audio chunk received:", event.data.size, "bytes")
           }
-        })
+        }
 
-        // Make sure we get data at regular intervals
-        mediaRecorder.start(1000)
-        console.log("MediaRecorder started:", mediaRecorder.state)
-      } catch (err: any) {
-        console.error("Error accessing microphone:", err)
-        setPermissionError(err.message || "Could not access your microphone. Please check permissions.")
+        // Start recording automatically
+        recorder.start(500) // Collect data every 500ms
+        console.log("Recording started")
+        setIsRecording(true)
+        setIsPulsing(true)
+      } catch (err) {
+        console.error("Error getting microphone permission:", err)
+        setPermissionError("Please allow microphone access to record")
       }
     }
 
     requestPermissionAndStartRecording()
 
+    // Cleanup function
     return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-        console.log("Stopping recorder on cleanup")
-        mediaRecorderRef.current.stop()
-      }
-
       if (audioStream) {
-        console.log("Stopping audio tracks")
+        console.log("Stopping all audio tracks")
         audioStream.getTracks().forEach((track) => track.stop())
       }
     }
   }, [])
 
-  const handlePauseResume = () => {
-    if (!mediaRecorderRef.current) return
+  const handlePauseResumeRecording = () => {
+    if (!mediaRecorderRef.current) {
+      console.error("MediaRecorder not initialized")
+      return
+    }
 
     if (isRecording) {
-      console.log("Pausing recording")
+      // Pause recording
       if (mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.pause()
+        console.log("Recording paused")
+        setIsRecording(false)
+        setIsPulsing(false)
       }
-      setIsRecording(false)
-      setIsPulsing(false)
     } else {
-      console.log("Resuming recording")
+      // Resume recording
       if (mediaRecorderRef.current.state === "paused") {
         mediaRecorderRef.current.resume()
+        console.log("Recording resumed")
+        setIsRecording(true)
+        setIsPulsing(true)
       }
-      setIsRecording(true)
-      setIsPulsing(true)
     }
   }
 
@@ -103,7 +123,7 @@ export default function RecordPage() {
     mediaRecorderRef.current.requestData()
 
     // Define the stop event handler before stopping
-    const handleStop = () => {
+    const handleStop = async () => {
       console.log("Recording stopped, audio chunks:", audioChunksRef.current.length)
 
       if (audioChunksRef.current.length === 0) {
@@ -111,117 +131,119 @@ export default function RecordPage() {
         return
       }
 
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' })
       console.log("Created audio blob:", audioBlob.size, "bytes")
 
-      const audioUrl = URL.createObjectURL(audioBlob)
-      console.log("Created object URL:", audioUrl)
+      try {
+        // Process conversation ID
+        let targetConversationId = conversationId
 
-      // Generate a unique ID for this recording
-      const recordingId = `rec-${Date.now()}`
-      const newConversationId = conversationId || `new-${Date.now()}`
+        // If it's a new conversation, create it with a timestamp-based ID
+        if (isNewConversation) {
+          const newConversation = createConversation(conversationTitle)
+          targetConversationId = newConversation.id
+          console.log("Created new conversation:", targetConversationId)
+        }
 
-      console.log("Saving recording:", {
-        id: recordingId,
-        conversationId: newConversationId,
-        title: conversationTitle
-      })
+        console.log("Saving recording to conversation:", targetConversationId)
 
-      // Save the recording to local storage
-      saveRecording({
-        id: recordingId,
-        conversationId: newConversationId,
-        title: conversationTitle,
-        audioUrl: audioUrl,
-        transcript: "Transcription will appear here",
-        timestamp: new Date().toISOString(),
-        audioBlob: audioBlob
-      })
+        // Save recording with the blob
+        const savedRecording = await saveRecording({
+          conversationId: targetConversationId!,
+          title: conversationTitle,
+          transcript: "Transcription will appear here",
+          timestamp: new Date().toISOString(),
+          audioBlob: audioBlob
+        })
 
-      // Clear media resources
-      setAudioStream(null)
+        console.log("Recording saved successfully:", savedRecording)
 
-      // Navigate to conversation page
-      const navUrl = `/conversation/${newConversationId}${conversationId ? '' : `?title=${encodeURIComponent(conversationTitle)}`}`
-      console.log("Navigating to:", navUrl)
-      router.push(navUrl)
+        // Clear media resources
+        setAudioStream(null)
+
+        // Navigate to conversation page
+        const navUrl = `/conversation/${targetConversationId}`
+        console.log("Navigating to:", navUrl)
+        router.push(navUrl)
+      } catch (error) {
+        console.error("Error saving recording:", error)
+      }
     }
 
-    // Add event listener for when recording stops
-    mediaRecorderRef.current.addEventListener("stop", handleStop, { once: true })
+    // Add stop event listener
+    mediaRecorderRef.current.addEventListener('stop', handleStop, { once: true })
 
     // Stop the recording
     mediaRecorderRef.current.stop()
-    setIsRecording(false)
-    console.log("MediaRecorder stopped")
+    console.log("Recording stopping...")
+
+    // Stop all tracks from the stream
+    if (audioStream) {
+      audioStream.getTracks().forEach((track) => track.stop())
+    }
+  }
+
+  // Show error if microphone permission is denied
+  if (permissionError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+        <h1 className="text-2xl font-bold mb-4">Microphone Access Required</h1>
+        <p className="mb-6 text-gray-600">{permissionError}</p>
+        <Button asChild variant="outline">
+          <Link href="/">Back to Home</Link>
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <div
-      className={cn(
-        "min-h-screen bg-white transition-all duration-500 relative overflow-hidden",
-        !isRecording && "scale-[0.98] bg-gray-50",
-      )}
-    >
-      {/* Pulsing background effect */}
-      <div
-        className={cn(
-          "absolute inset-0 bg-blue-100/20 rounded-full scale-0 opacity-0 transition-all duration-2000 ease-in-out",
-          isPulsing && "animate-pulse-slow",
-        )}
-      />
-      <header className="flex items-center justify-between p-4 border-b relative z-10">
-        <div className="flex items-center gap-4">
-          <Link href={conversationId ? `/conversation/${conversationId}` : "/"}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-6 w-6" />
-            </Button>
-          </Link>
-          <h1 className="text-lg font-medium flex items-center gap-2">
-            {isNewConversation && <Sparkles className="h-4 w-4 text-yellow-500" />}
-            {conversationTitle}
-          </h1>
-        </div>
-      </header>
-      <main className="flex flex-col items-center justify-between h-[calc(100vh-64px)] p-4 relative z-10">
-        {permissionError && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-md mb-4 text-center">
-            {permissionError}
-            <div className="mt-2">
-              <Button onClick={() => window.location.reload()}>Try Again</Button>
-            </div>
-          </div>
-        )}
-        <div
-          className={cn(
-            "w-full flex-1 flex flex-col items-center justify-center gap-8 transition-all duration-500",
-            !isRecording && "scale-105",
-          )}
+    <div className={cn(
+      "flex flex-col items-center justify-between min-h-screen p-4 transition-all duration-300",
+      !isRecording && "bg-gray-50"
+    )}>
+      <div className="w-full flex justify-start">
+        <Button
+          variant="outline"
+          asChild
+          className="p-2 border-2 border-black bg-white hover:bg-gray-100"
         >
-          <AudioVisualizer audioStream={audioStream} isRecording={isRecording} />
-          <Timer isRunning={isRecording} />
+          <Link href="/">
+            <ChevronLeft className="h-6 w-6 text-black" />
+          </Link>
+        </Button>
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md">
+        <div className="text-xl font-medium mb-8">
+          {isNewConversation ? `${conversationTitle} ✨` : conversationTitle}
         </div>
-        <div className="w-full flex justify-center gap-8 py-8">
+
+        <div className="mb-16 w-full">
+          <AudioVisualizer
+            audioStream={audioStream}
+            isRecording={isPulsing}
+          />
+        </div>
+
+        <div className="flex justify-center gap-12 w-full mt-8">
           <Button
-            variant="outline"
-            size="icon"
-            className="h-16 w-16 rounded-full shadow-md transition-all duration-300 hover:bg-primary/10"
-            onClick={handlePauseResume}
-            disabled={!audioStream || !!permissionError}
+            onClick={handlePauseResumeRecording}
+            className="rounded-full h-16 w-16 flex items-center justify-center"
           >
             {isRecording ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8" />}
           </Button>
+
           <Button
-            variant="outline"
-            size="icon"
-            className="h-16 w-16 rounded-full shadow-md transition-all duration-300 hover:bg-green-50"
             onClick={handleComplete}
-            disabled={!audioStream || !isRecording && audioChunksRef.current.length === 0 || !!permissionError}
+            variant="secondary"
+            className="rounded-full h-16 w-16 flex items-center justify-center"
           >
-            <Check className="h-8 w-8 text-green-600" />
+            <Check className="h-8 w-8" />
           </Button>
         </div>
-      </main>
+      </div>
+
+      <div className="h-16"></div>
     </div>
   )
 }

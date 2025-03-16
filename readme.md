@@ -1,3 +1,12 @@
+# Status
+If you want to resume the project, remember to have:
+```bash
+npm run dev
+```
+in the terminal.
+
+Also look at the AI-Coding-Info folder, we are in phase 1 and right now the App cannot work as a memo app reliably
+
 # Project Info
 
 An app for an AI note-taking assistant.

@@ -16,6 +16,9 @@ export function Timer({ isRunning }: TimerProps) {
       intervalId = setInterval(() => {
         setTime((t) => t + 1)
       }, 1000)
+    } else {
+      // Reset timer when recording stops
+      setTime(0)
     }
 
     return () => {
@@ -36,9 +39,11 @@ export function Timer({ isRunning }: TimerProps) {
   }
 
   return (
-    <div className="text-center">
-      <div className="text-4xl font-mono tracking-wider">{formatTime(time)}</div>
-      <div className="text-sm text-gray-500 mt-1">Record duration</div>
+    <div className="text-center flex flex-col items-center gap-1">
+      <div className="text-4xl font-mono tracking-wider font-bold text-primary">
+        {formatTime(time)}
+      </div>
+      <div className="text-sm text-gray-500">Record duration</div>
     </div>
   )
 }
